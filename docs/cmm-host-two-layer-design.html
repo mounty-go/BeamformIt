@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1d33" />
+  <meta name="color-scheme" content="dark light" />
+  <title>三坐标上位机 · 两层架构设计指导与检视要点</title>
+  <style>
+    :root {
+      --bg: #07111e;
+      --bg-elev: #0e1c2e;
+      --bg-card: #122338;
+      --line: rgba(140, 190, 230, 0.18);
+      --text: #e8f1fb;
+      --muted: #9bb0c7;
+      --dim: #6f859c;
+      --l1: #3dd6c6;
+      --l1-dim: rgba(61, 214, 198, 0.16);
+      --l2: #5aa8ff;
+      --l2-dim: rgba(90, 168, 255, 0.16);
+      --warn: #ffb020;
+      --danger: #ff6b6b;
+      --ok: #6adf8c;
+      --accent: #d6c48a;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+      --radius: 16px;
+      --max: 760px;
+      --safe-b: env(safe-area-inset-bottom, 0px);
+      --nav-h: 58px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Noto Sans SC", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      background:
+        radial-gradient(1200px 500px at 10% -10%, rgba(61, 214, 198, 0.12), transparent 50%),
+        radial-gradient(900px 420px at 110% 8%, rgba(90, 168, 255, 0.14), transparent 46%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 16px;
+      padding-bottom: calc(var(--nav-h) + var(--safe-b) + 18px);
+    }
+    a { color: var(--l1); text-decoration: none; }
+    .wrap { width: min(var(--max), calc(100% - 28px)); margin: 0 auto; }
+    header.hero {
+      padding: 28px 0 10px;
+    }
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .kicker i {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--l1);
+      box-shadow: 0 0 0 4px var(--l1-dim);
+    }
+    h1 {
+      font-size: clamp(26px, 7vw, 36px);
+      line-height: 1.22;
+      margin: 10px 0 12px;
+      letter-spacing: 0.01em;
+    }
+    .lead { color: var(--muted); margin: 0 0 18px; }
+    .meta {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-bottom: 18px;
+    }
+    .chip {
+      font-size: 12px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.03);
+    }
+    .stack {
+      display: grid;
+      gap: 10px;
+      margin: 18px 0 8px;
+    }
+    .layer-card {
+      border-radius: var(--radius);
+      padding: 16px 16px 14px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .layer-card::before {
+      content: "";
+      position: absolute; inset: 0 auto 0 0; width: 5px;
+    }
+    .layer-card.l1 { background: linear-gradient(180deg, var(--l1-dim), transparent 70%), var(--bg-card); }
+    .layer-card.l2 { background: linear-gradient(180deg, var(--l2-dim), transparent 70%), var(--bg-card); }
+    .layer-card.l1::before { background: var(--l1); }
+    .layer-card.l2::before { background: var(--l2); }
+    .layer-card h2 { margin: 0 0 6px; font-size: 18px; }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    .l1 .tag { color: var(--l1); background: var(--l1-dim); }
+    .l2 .tag { color: var(--l2); background: var(--l2-dim); }
+    .arrow {
+      text-align: center;
+      color: var(--dim);
+      font-size: 12px;
+      letter-spacing: 0.2em;
+    }
+    section {
+      margin: 28px 0;
+      scroll-margin-top: 16px;
+    }
+    h2.sec {
+      font-size: 22px;
+      margin: 0 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    h3 { font-size: 17px; margin: 18px 0 8px; }
+    p { margin: 0 0 12px; color: var(--text); }
+    .muted { color: var(--muted); }
+    ul, ol { margin: 0 0 14px; padding-left: 1.15em; }
+    li { margin: 0 0 7px; }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px 15px;
+      margin: 10px 0;
+    }
+    .grid2 {
+      display: grid;
+      gap: 10px;
+    }
+    @media (min-width: 640px) {
+      .grid2.two { grid-template-columns: 1fr 1fr; }
+    }
+    .do { border-left: 4px solid var(--ok); }
+    .dont { border-left: 4px solid var(--danger); }
+    .note { border-left: 4px solid var(--warn); }
+    .do h3, .dont h3, .note h3 { margin-top: 0; }
+    .spec { display: grid; gap: 8px; margin: 0 0 14px; }
+    .spec article {
+      background: var(--bg-card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 13px;
+    }
+    .spec h4 { margin: 0 0 6px; font-size: 15px; color: var(--accent); }
+    .spec p { margin: 0 0 4px; font-size: 14px; color: var(--muted); }
+    .spec p:last-child { margin: 0; }
+    .spec b { color: var(--text); font-weight: 650; }
+    .call {
+      display: grid;
+      gap: 8px;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 12.5px;
+      word-break: break-word;
+    }
+    .call .down, .call .up {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+    .down { background: var(--l1-dim); }
+    .up { background: var(--l2-dim); }
+    .check {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .check li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: var(--bg-card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      margin: 0 0 8px;
+    }
+    .check input {
+      margin-top: 3px;
+      width: 20px; height: 20px;
+      accent-color: var(--l1);
+      flex: 0 0 auto;
+    }
+    .check label { flex: 1; }
+    .progress {
+      position: sticky; top: 0; z-index: 5;
+      background: rgba(7, 17, 30, 0.92);
+      backdrop-filter: blur(10px);
+      padding: 8px 0 10px;
+      margin: 0 -14px 8px;
+      padding-left: 14px; padding-right: 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .progress .meter { flex: 1; }
+    .reset {
+      appearance: none; border: 1px solid var(--line);
+      background: var(--bg-elev); color: var(--muted);
+      border-radius: 999px; padding: 6px 10px; font-size: 12px;
+    }
+    .bar {
+      height: 8px; border-radius: 99px;
+      background: #1b314a; overflow: hidden;
+    }
+    .bar > span {
+      display: block; height: 100%; width: 0;
+      background: linear-gradient(90deg, var(--l2), var(--l1));
+      transition: width 0.2s ease;
+    }
+    .prog-text { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    nav.bottom {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      height: calc(var(--nav-h) + var(--safe-b));
+      padding-bottom: var(--safe-b);
+      background: rgba(8, 16, 28, 0.92);
+      backdrop-filter: blur(14px);
+      border-top: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      z-index: 20;
+    }
+    nav.bottom a {
+      color: var(--dim);
+      font-size: 11px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 2px;
+      font-weight: 600;
+    }
+    nav.bottom a.on, nav.bottom a:active { color: var(--text); }
+    nav.bottom svg { width: 20px; height: 20px; }
+    details {
+      background: var(--bg-card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 4px 12px 8px;
+      margin: 8px 0;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+      padding: 10px 0;
+      list-style: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::before {
+      content: "▸ ";
+      color: var(--accent);
+    }
+    details[open] summary::before { content: "▾ "; }
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      margin-left: 6px;
+      vertical-align: 1px;
+    }
+    .pill.l1 { background: var(--l1-dim); color: var(--l1); }
+    .pill.l2 { background: var(--l2-dim); color: var(--l2); }
+    .flow {
+      display: grid; gap: 6px; margin: 12px 0;
+    }
+    .flow .step {
+      background: var(--bg-elev);
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    .flow .step b { color: var(--accent); }
+    footer.tiny {
+      color: var(--dim);
+      font-size: 12px;
+      margin: 30px 0 10px;
+      text-align: center;
+    }
+    .toc a {
+      display: block;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line);
+      color: var(--text);
+    }
+    code {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.88em;
+      background: rgba(255,255,255,0.06);
+      padding: 1px 5px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero" id="top">
+      <div class="kicker"><i></i> CMM Host Software · 2-Layer Architecture</div>
+      <h1>三坐标测量仪上位机<br />两层架构设计指导</h1>
+      <p class="lead">把“测什么、怎么评”和“怎么走、怎么采”彻底拆开。上层只表达计量意图，下层只兑现设备能力。复杂功能先定层，再定模块，最后才写代码。</p>
+      <div class="meta">
+        <span class="chip">适用：桥式 / 龙门 / 水平臂 / 关节臂</span>
+        <span class="chip">触发 + 扫描 + 光学</span>
+        <span class="chip">手机竖屏阅读</span>
+      </div>
+
+      <div class="stack">
+        <article class="layer-card l1">
+          <span class="tag">L1 · 计量应用层</span>
+          <h2>测什么，怎么评，如何闭环质量</h2>
+          <p class="muted" style="margin:0">零件程序、CAD/特征、找正、GD&amp;T、报表、批次追溯。只消费设备能力，不发轴指令。</p>
+        </article>
+        <div class="arrow">↕ 唯一契约：测量任务 / 原始测点 / 设备事件</div>
+        <article class="layer-card l2">
+          <span class="tag">L2 · 设备执行层</span>
+          <h2>怎么走，怎么采，如何保安全</h2>
+          <p class="muted" style="margin:0">运动学、路径、测头、控制器协议、补偿图、碰撞与急停。不理解公差，不生成报告。</p>
+        </article>
+      </div>
+    </header>
+
+    <section id="why">
+      <h2 class="sec">1. 为什么只分两层</h2>
+      <p>三坐标上位机最容易做成“五层看起来很完整，实际每层都在碰机床”。真正稳定的产品，对外只暴露<strong>两层业务边界</strong>：</p>
+      <ul>
+        <li><strong>L1 回答计量问题</strong>：这个孔的位置度是否合格？基准怎么建？程序如何离线编？</li>
+        <li><strong>L2 回答设备问题</strong>：测针从哪接近、以何速度触发、MCS 点如何采回、碰撞如何停。</li>
+      </ul>
+      <div class="card note">
+        <h3>专家口径</h3>
+        <p style="margin:0">L2 内部可以有通信、运动学、测头、安全等子模块，但它们是<strong>L2 的实现细节</strong>，不得成为 L1 可直接调用的第三层。否则 GD&amp;T 模块迟早会去拼 I++ 字符串，控制器适配迟早会去改评定公式。</p>
+      </div>
+      <div class="grid2 two">
+        <div class="card">
+          <h3>两层能换什么</h3>
+          <ul>
+            <li>换控制器：Renishaw UCC / 国产总线 / I++ DME，L1 不动</li>
+            <li>换评定：ISO 1101 / ASME Y14.5，L2 不动</li>
+            <li>换机型：桥式改龙门，只改 L2 运动学与工作空间</li>
+            <li>离线编程机与联机测量机可共用 L1</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>两层不能省什么</h3>
+          <ul>
+            <li>层间必须有版本化契约，禁止“顺手调一下底层”</li>
+            <li>坐标系必须显式传递，禁止各层各自猜当前系</li>
+            <li>补偿图版本必须随测点一起上行</li>
+            <li>故障码分计量 / 设备 / 通信三类，禁止一个 <code>error=-1</code></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="boundary">
+      <h2 class="sec">2. 分层边界：允许与禁止</h2>
+      <div class="grid2 two">
+        <div class="card do">
+          <h3>L1 允许</h3>
+          <ul>
+            <li>定义特征、构造特征、基准体系 DRF</li>
+            <li>生成<strong>测量意图</strong>：期望点、法向、搜索距离、扫描策略</li>
+            <li>最小二乘 / 最小区域 / 内外接评定</li>
+            <li>ISO 14405 尺寸、ISO 1101 / ASME 形位公差</li>
+            <li>程序编辑、仿真回放、报表、SPC、权限</li>
+            <li>消费 L2 能力矩阵，决定能否执行某策略</li>
+          </ul>
+        </div>
+        <div class="card dont">
+          <h3>L1 禁止</h3>
+          <ul>
+            <li>直接发轴运动、G 代码、控制器专有帧</li>
+            <li>解析 EtherCAT / 串口 / UCC 报文</li>
+            <li>实现伺服前瞻、加减速、look-ahead</li>
+            <li>硬编码某机型杆长、光栅方向、测座零位</li>
+            <li>在 UI 线程里等触发中断</li>
+            <li>把机床误差图当“评定修正值”偷偷改结果</li>
+          </ul>
+        </div>
+        <div class="card do">
+          <h3>L2 允许</h3>
+          <ul>
+            <li>机型运动学（含测座 A/B、转台、关节臂）</li>
+            <li>21 项几何误差 / 体积补偿 / 温度补偿</li>
+            <li>接近-触发-回退、扫描路径插补、碰撞盒</li>
+            <li>测针库、等效直径、弯曲与测座角补偿</li>
+            <li>命令队列、心跳、看门狗、断线策略</li>
+            <li>上报 MCS/PCS 原始点、力/偏转、时间戳</li>
+          </ul>
+        </div>
+        <div class="card dont">
+          <h3>L2 禁止</h3>
+          <ul>
+            <li>理解图纸公差、基准、位置度公式</li>
+            <li>决定“下一个测哪个特征”（除非执行已下发任务）</li>
+            <li>生成质量报告或合格/不合格判定</li>
+            <li>在通信线程里做重拟合</li>
+            <li>因评定失败而自动改速度或改测点（须回 L1 决策）</li>
+            <li>把 UI 字符串当协议字段</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="l1">
+      <h2 class="sec">3. L1 计量应用层设计</h2>
+      <p>L1 的产品语言是<strong>特征与公差</strong>，不是轴和脉冲。设计时先建“测量意图模型”，再映射到 L2 任务。</p>
+
+      <h3>3.1 核心对象</h3>
+      <div class="spec">
+        <article><h4>Part / Setup</h4><p><b>职责</b> 零件、夹具、批次、温度名义值</p><p><b>检视</b> 是否与设备序列号解耦</p></article>
+        <article><h4>Feature</h4><p><b>职责</b> 点 / 线 / 面 / 圆 / 柱 / 锥 / 球 / 曲线 / 曲面</p><p><b>检视</b> 名义、公差、采样策略分离存储</p></article>
+        <article><h4>DRF / Alignment</h4><p><b>职责</b> 3-2-1、RPS、最佳拟合</p><p><b>检视</b> 约束、权重、失败回退显式化</p></article>
+        <article><h4>Program</h4><p><b>职责</b> 顺序、循环、分支、托盘</p><p><b>检视</b> 可离线仿真，不依赖联机</p></article>
+        <article><h4>Evaluator</h4><p><b>职责</b> 拟合与 GD&amp;T</p><p><b>检视</b> 算法版本可追溯，异常点策略可配置</p></article>
+        <article><h4>Report / Trace</h4><p><b>职责</b> 结果、测点、补偿版本、操作者</p><p><b>检视</b> 能复现当次测量，而不是只留最终数</p></article>
+      </div>
+
+      <h3>3.2 坐标系纪律</h3>
+      <p>上位机里至少同时存在四套系，L1 必须显式命名，禁止“当前坐标系”这种隐式全局：</p>
+      <ol>
+        <li><strong>MCS</strong> 机床系：L2 主场，补偿后的机器坐标</li>
+        <li><strong>PCS</strong> 零件系：L1 主场，找正后的工作坐标</li>
+        <li><strong>CAD</strong> 模型系：离线编程与法向来源</li>
+        <li><strong>Tool</strong> 测头系：测针球心、测座角、星形针</li>
+      </ol>
+      <div class="card note">
+        <p style="margin:0">找正矩阵只由 L1 计算，经契约下发给 L2 作为工作偏置。L2 可用它把 MCS 转成 PCS 上报，但<strong>不得自行改找正</strong>。扫描过程中若发现漂移，只上报事件，由 L1 决定是否重找正。</p>
+      </div>
+
+      <h3>3.3 测量意图，不是点列</h3>
+      <p>L1 下发应优先是策略，而不是写死的机床点：</p>
+      <ul>
+        <li>圆：圆心名义、直径、采样数、均匀角、内/外、拟合方法</li>
+        <li>面：边界、网格、法向、滤波波长</li>
+        <li>扫描曲线：路径参数、节距、速度上限、力控窗口</li>
+      </ul>
+      <p class="muted">L2 负责把策略展开成可执行路径。这样换针、换测座角、加安全平面时，不必改零件程序语义。</p>
+
+      <details>
+        <summary>L1 模块划分建议</summary>
+        <ul>
+          <li>程序与配方：编辑器、版本、权限、电子签名</li>
+          <li>CAD/PMI：名义几何、法向、GD&amp;T 语义导入</li>
+          <li>找正引擎：3-2-1 / 最佳拟合 / RPS / 逐级约束</li>
+          <li>评定引擎：尺寸、形位、轮廓、滤波、粗差</li>
+          <li>结果与 SPC：批次、Cp/Cpk、报表模板</li>
+          <li>仿真视图：只读消费 L2 运动学模型，不控实机</li>
+        </ul>
+      </details>
+    </section>
+
+    <section id="l2">
+      <h2 class="sec">4. L2 设备执行层设计</h2>
+      <p>L2 对外是一台“有能力的测量设备”，对内才是控制器、测头和误差图。产品上应对齐 I++ DME 的思想：<strong>能力查询 + 任务执行 + 异步事件</strong>，即使实际协议不是 I++。</p>
+
+      <h3>4.1 能力矩阵（先问再做）</h3>
+      <ul>
+        <li>运动：轴数、工作空间、最大速度/加速度、转台</li>
+        <li>测头：触发 / 扫描 / 光学；测座索引或连续；换针</li>
+        <li>安全：软限位、碰撞源、过行程复位方式</li>
+        <li>补偿：几何误差图、温度通道、是否已使能</li>
+        <li>流式：扫描点频率、是否带力/偏转</li>
+      </ul>
+      <p class="muted">L1 在生成程序或切策略前必须读能力。没有扫描头就不要下发扫描任务；没有转台就不要假设 C 轴。</p>
+
+      <h3>4.2 内部子域（仍属 L2）</h3>
+      <div class="spec">
+        <article><h4>运动学</h4><p><b>做什么</b> 关节↔笛卡尔、测座、转台</p><p><b>不泄漏给 L1</b> DH 参数、零位脉冲</p></article>
+        <article><h4>路径与碰撞</h4><p><b>做什么</b> 安全平面、回退、盒体 / 网格碰撞</p><p><b>不泄漏给 L1</b> 插补周期、前瞻缓存</p></article>
+        <article><h4>测头服务</h4><p><b>做什么</b> 校准、等效直径、弯曲、星形针</p><p><b>不泄漏给 L1</b> 触发板阈值寄存器</p></article>
+        <article><h4>补偿服务</h4><p><b>做什么</b> 21 项、体积图、温度、力变形</p><p><b>不泄漏给 L1</b> 图文件二进制布局</p></article>
+        <article><h4>设备适配</h4><p><b>做什么</b> I++ / 私有以太网 / 现场总线</p><p><b>不泄漏给 L1</b> 报文、重试字节</p></article>
+        <article><h4>安全监护</h4><p><b>做什么</b> 急停、看门狗、工作空间、互锁</p><p><b>不泄漏给 L1</b> I/O 点表</p></article>
+      </div>
+
+      <h3>4.3 采集质量必须上行</h3>
+      <p>每个点至少带：坐标、所在坐标系、测针 ID、测座角、补偿图版本、触发/扫描标志、预行程或偏转、时间戳、质量位。缺质量位的点，L1 不得当合格数据做精密评定。</p>
+    </section>
+
+    <section id="api">
+      <h2 class="sec">5. 层间契约</h2>
+      <p>两层只通过稳定 API 对话。建议命令下行、事件上行，全部异步，禁止 L1 阻塞等待伺服周期。</p>
+      <div class="call">
+        <div class="down">↓ L1 → L2　GetCapabilities()　SetActiveTool(tool)　SetWorkOffset(T_pcs)　Probe(strategy)　Scan(strategy)　MoveClearance()　ChangeTool()　Pause/Resume/Abort　Home()</div>
+        <div class="up">↑ L2 → L1　PointBatch　ScanChunk　StateChanged　ToolChanged　Fault(estop/collision/overtravel/comm)　CompensationContext　Progress</div>
+      </div>
+
+      <h3>5.1 契约设计硬规则</h3>
+      <ol>
+        <li>所有几何量带单位与坐标系 ID，禁止裸 <code>double x,y,z</code>。</li>
+        <li>任务有唯一 <code>jobId</code>，事件必须带回，禁止靠时序猜测。</li>
+        <li>失败分：可重试通信、需复位设备、需 L1 改策略三类。</li>
+        <li>L2 状态机对外只有：空闲 / 运动 / 探测 / 扫描 / 故障 / 急停。</li>
+        <li>补偿使能状态变化视为配置变更，正在运行的任务应拒绝或显式作废。</li>
+        <li>仿真模式走同一契约，仅 L2 后端换成虚拟设备。</li>
+      </ol>
+
+      <h3>5.2 一次圆孔测量的正确流向</h3>
+      <div class="flow">
+        <div class="step"><b>1 L1</b> 读取特征：内圆、8 点、LS 拟合、位置度相对 A|B|C</div>
+        <div class="step"><b>2 L1</b> 查 L2 能力与当前测针；生成 ProbeCircle 策略（含搜索方向与安全高度）</div>
+        <div class="step"><b>3 L2</b> 展开路径、碰撞检查、下发控制器；采回 MCS 点并附质量与补偿版本</div>
+        <div class="step"><b>4 L2</b> 按当前 WorkOffset 可选转换为 PCS 后批量上行</div>
+        <div class="step"><b>5 L1</b> 拟合、评定、记录原始点与结果；不合格不回写 L2 去“再快一点”</div>
+      </div>
+    </section>
+
+    <section id="runtime">
+      <h2 class="sec">6. 运行时、安全与计量合规</h2>
+      <h3>6.1 线程模型</h3>
+      <ul>
+        <li>UI 线程：只渲染与交互，零设备 I/O。</li>
+        <li>L1 工作线程：程序解释、评定、报表。</li>
+        <li>L2 设备线程：协议、队列、状态机。</li>
+        <li>采集回调：尽快入队，重计算放到 L1。</li>
+      </ul>
+      <h3>6.2 安全底线（L2 主责，L1 配合）</h3>
+      <ul>
+        <li>急停与碰撞：L2 立即停，再通知 L1；L1 不得“先问用户再停”。</li>
+        <li>程序运行中禁止改补偿图、改测针定义、改软限位。</li>
+        <li>手动操纵杆与自动程序互斥。</li>
+        <li>工作空间、测针球、工件/夹具模型必须参与碰撞，缺模型要降级为保守盒并告警。</li>
+      </ul>
+      <h3>6.3 计量可追溯</h3>
+      <ul>
+        <li>ISO 10360 验收/复检流程走正式程序，结果进追溯库。</li>
+        <li>测针校准、温度、误差图版本、软件算法版本写入当次测量包。</li>
+        <li>评定算法变更必须升版本，旧零件程序默认绑定旧算法或明确迁移。</li>
+        <li>原始点与评定结果一起存，禁止只存“合格”。</li>
+      </ul>
+    </section>
+
+    <section id="review">
+      <h2 class="sec">7. 分层检视要点</h2>
+      <p class="muted">现场/设计评审时逐条勾选。进度存在本机浏览器，不清缓存可接着用。</p>
+      <div class="progress">
+        <div class="meter">
+          <div class="bar"><span id="bar"></span></div>
+          <div class="prog-text" id="progText">已完成 0 / 0</div>
+        </div>
+        <button class="reset" type="button" id="resetBtn">清空</button>
+      </div>
+
+      <h3>A. 边界与依赖</h3>
+      <ul class="check" data-group="A">
+        <li><input type="checkbox" id="a1"><label for="a1">L1 源码中搜不到控制器协议、寄存器、脉冲当量。</label></li>
+        <li><input type="checkbox" id="a2"><label for="a2">L2 源码中搜不到公差代号、基准、报表模板。</label></li>
+        <li><input type="checkbox" id="a3"><label for="a3">UI 不直接调设备适配器，只通过 L1 会话或只读状态投影。</label></li>
+        <li><input type="checkbox" id="a4"><label for="a4">新机型接入只需换 L2 适配与运动学，回归 L1 用例集。</label></li>
+        <li><input type="checkbox" id="a5"><label for="a5">离线仿真与联机共用同一套层间契约。</label></li>
+      </ul>
+
+      <h3>B. 计量正确性</h3>
+      <ul class="check" data-group="B">
+        <li><input type="checkbox" id="b1"><label for="b1">找正、拟合、GD&amp;T 均在 L1；L2 不改点的计量含义。</label></li>
+        <li><input type="checkbox" id="b2"><label for="b2">坐标系 ID 贯穿任务、测点、结果，无隐式“当前系”。</label></li>
+        <li><input type="checkbox" id="b3"><label for="b3">测针半径补偿的应用位置明确：路径侧在 L2，评定侧不重复扣半径。</label></li>
+        <li><input type="checkbox" id="b4"><label for="b4">滤波、异常点、拟合准则可配置且写入追溯。</label></li>
+        <li><input type="checkbox" id="b5"><label for="b5">扫描点法向来源可说明：CAD 名义 / 测头偏转 / 估算法向。</label></li>
+        <li><input type="checkbox" id="b6"><label for="b6">温度补偿发生在 L2 几何域，不在 L1 把膨胀当公差余量。</label></li>
+      </ul>
+
+      <h3>C. 设备与实时</h3>
+      <ul class="check" data-group="C">
+        <li><input type="checkbox" id="c1"><label for="c1">能力查询先于任务下发；不支持则 L1 明确失败而非 L2 静默降级。</label></li>
+        <li><input type="checkbox" id="c2"><label for="c2">命令队列有 jobId、超时、取消；无“发了就忘”。</label></li>
+        <li><input type="checkbox" id="c3"><label for="c3">急停/碰撞/过行程由 L2 硬件路径优先处理。</label></li>
+        <li><input type="checkbox" id="c4"><label for="c4">扫描大数据走分块事件，不在协议线程做拟合。</label></li>
+        <li><input type="checkbox" id="c5"><label for="c5">断线后状态机进入故障，重连不自动续打未确认路径。</label></li>
+        <li><input type="checkbox" id="c6"><label for="c6">补偿图切换会使运行中任务作废并留下审计。</label></li>
+      </ul>
+
+      <h3>D. 安全与人机</h3>
+      <ul class="check" data-group="D">
+        <li><input type="checkbox" id="d1"><label for="d1">自动运行与手柄手动互斥；切换有明确状态。</label></li>
+        <li><input type="checkbox" id="d2"><label for="d2">缺工件/夹具模型时碰撞策略降级并强制提示。</label></li>
+        <li><input type="checkbox" id="d3"><label for="d3">换针、测座旋转有确认与干涉检查。</label></li>
+        <li><input type="checkbox" id="d4"><label for="d4">权限：谁能改补偿、谁能改程序、谁能跳过安全提示，可审计。</label></li>
+      </ul>
+
+      <h3>E. 数据、测试与发布</h3>
+      <ul class="check" data-group="E">
+        <li><input type="checkbox" id="e1"><label for="e1">当次测量包含：程序版本、算法版本、测针、补偿图、温度、原始点、结果。</label></li>
+        <li><input type="checkbox" id="e2"><label for="e2">L1 有纯软件金样件回归（不连实机）。</label></li>
+        <li><input type="checkbox" id="e3"><label for="e3">L2 有虚拟控制器回放与协议一致性测试。</label></li>
+        <li><input type="checkbox" id="e4"><label for="e4">层间契约有兼容策略：增字段可容忍，改语义必须升主版本。</label></li>
+        <li><input type="checkbox" id="e5"><label for="e5">ISO 10360 相关程序与日常零件程序隔离，避免被“优化速度”带偏。</label></li>
+      </ul>
+    </section>
+
+    <section id="anti">
+      <h2 class="sec">8. 常见反模式</h2>
+      <div class="card dont">
+        <h3>上帝 UI</h3>
+        <p style="margin:0">界面按钮直接写控制器命令。结果是演示很快，机型一换、安全一加就全面返工。</p>
+      </div>
+      <div class="card dont">
+        <h3>评定里“修一点机床误差”</h3>
+        <p style="margin:0">把体积补偿、温度、测针弯曲塞进 GD&amp;T。计量语义被污染，验收与日常测量会对不上。</p>
+      </div>
+      <div class="card dont">
+        <h3>全局当前坐标系</h3>
+        <p style="margin:0">各模块读同一个可变矩阵。异步扫描块一乱序，点就评到错误的系里。</p>
+      </div>
+      <div class="card dont">
+        <h3>静默降级</h3>
+        <p style="margin:0">没有扫描头就改成触发点、碰撞模型缺失就关碰撞。现场表现为“有时准有时撞”。</p>
+      </div>
+      <div class="card dont">
+        <h3>假三层、真两摊</h3>
+        <p style="margin:0">文档写了领域层，代码仍是“界面 ↔ 通信”。检视时以依赖方向和搜索协议字符串为准，不以 PPT 为准。</p>
+      </div>
+    </section>
+
+    <section id="land">
+      <h2 class="sec">9. 落地顺序</h2>
+      <ol>
+        <li>冻结两层职责表与禁止清单（本文第 2 节）。</li>
+        <li>先定义契约与状态机，再写功能。</li>
+        <li>用虚拟设备打通：程序 → 任务 → 假点 → 评定 → 报表。</li>
+        <li>接入一种真实控制器，补齐安全与补偿上下文。</li>
+        <li>用标准球/标准量块做 L1 金样 + L2 实机对照。</li>
+        <li>再扩展扫描、转台、光学；每增能力只改 L2 能力矩阵与执行器。</li>
+      </ol>
+      <div class="card">
+        <h3>评审时一句话标准</h3>
+        <p style="margin:0">如果一个需求既能说成“公差/程序/报表”又能说成“轴/测头/报文”，就还没分层。先拆成 L1 意图 + L2 能力，再估工作量。</p>
+      </div>
+    </section>
+
+    <section id="toc">
+      <h2 class="sec">目录</h2>
+      <div class="toc card" style="padding: 4px 16px;">
+        <a href="#why">1. 为什么只分两层</a>
+        <a href="#boundary">2. 允许与禁止</a>
+        <a href="#l1">3. L1 计量应用层</a>
+        <a href="#l2">4. L2 设备执行层</a>
+        <a href="#api">5. 层间契约</a>
+        <a href="#runtime">6. 运行时与合规</a>
+        <a href="#review">7. 检视要点</a>
+        <a href="#anti">8. 反模式</a>
+        <a href="#land">9. 落地顺序</a>
+      </div>
+    </section>
+
+    <footer class="tiny">
+      三坐标上位机架构检视备忘 · 两层模型：L1 计量意图 / L2 设备能力<br />
+      勾选进度仅存本机，不上传。适合现场评审与手机查阅。
+    </footer>
+  </div>
+
+  <nav class="bottom" aria-label="章节">
+    <a href="#top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>总览</a>
+    <a href="#l1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="7" rx="2"/><path d="M8 15h8M8 19h5"/></svg>L1</a>
+    <a href="#l2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M5 12h4M15 12h4M12 5v4M12 15v4"/></svg>L2</a>
+    <a href="#api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/><path d="M16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-3"/><path d="M9 12h6"/></svg>契约</a>
+    <a href="#review"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>检视</a>
+  </nav>
+
+  <script>
+    const KEY = "cmm-2layer-review-v1";
+    const boxes = [...document.querySelectorAll(".check input")];
+    const saved = JSON.parse(localStorage.getItem(KEY) || "{}");
+    boxes.forEach(b => { if (saved[b.id]) b.checked = true; });
+    function render() {
+      const total = boxes.length;
+      const done = boxes.filter(b => b.checked).length;
+      document.getElementById("bar").style.width = (100 * done / total) + "%";
+      document.getElementById("progText").textContent = "已完成 " + done + " / " + total + " 项检视";
+      const map = {};
+      boxes.forEach(b => map[b.id] = b.checked);
+      localStorage.setItem(KEY, JSON.stringify(map));
+    }
+    boxes.forEach(b => b.addEventListener("change", render));
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      boxes.forEach(b => b.checked = false);
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>
