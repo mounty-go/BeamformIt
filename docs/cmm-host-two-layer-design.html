@@ -154,31 +154,23 @@
     .dont { border-left: 4px solid var(--danger); }
     .note { border-left: 4px solid var(--warn); }
     .do h3, .dont h3, .note h3 { margin-top: 0; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13.5px;
-      display: block;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
+    .spec { display: grid; gap: 8px; margin: 0 0 14px; }
+    .spec article {
       background: var(--bg-card);
-      border-radius: 12px;
       border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 13px;
     }
-    th, td {
-      text-align: left;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-      min-width: 88px;
-      vertical-align: top;
-    }
-    th { color: var(--accent); font-weight: 700; white-space: nowrap; }
-    tr:last-child td { border-bottom: 0; }
+    .spec h4 { margin: 0 0 6px; font-size: 15px; color: var(--accent); }
+    .spec p { margin: 0 0 4px; font-size: 14px; color: var(--muted); }
+    .spec p:last-child { margin: 0; }
+    .spec b { color: var(--text); font-weight: 650; }
     .call {
       display: grid;
       gap: 8px;
       font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
       font-size: 12.5px;
+      word-break: break-word;
     }
     .call .down, .call .up {
       padding: 10px 12px;
@@ -203,19 +195,26 @@
       margin: 0 0 8px;
     }
     .check input {
-      margin-top: 4px;
-      width: 18px; height: 18px;
+      margin-top: 3px;
+      width: 20px; height: 20px;
       accent-color: var(--l1);
       flex: 0 0 auto;
     }
     .check label { flex: 1; }
     .progress {
       position: sticky; top: 0; z-index: 5;
-      background: rgba(7, 17, 30, 0.88);
+      background: rgba(7, 17, 30, 0.92);
       backdrop-filter: blur(10px);
       padding: 8px 0 10px;
-      margin: 0 -14px;
+      margin: 0 -14px 8px;
       padding-left: 14px; padding-right: 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .progress .meter { flex: 1; }
+    .reset {
+      appearance: none; border: 1px solid var(--line);
+      background: var(--bg-elev); color: var(--muted);
+      border-radius: 999px; padding: 6px 10px; font-size: 12px;
     }
     .bar {
       height: 8px; border-radius: 99px;
@@ -424,17 +423,14 @@
       <p>L1 的产品语言是<strong>特征与公差</strong>，不是轴和脉冲。设计时先建“测量意图模型”，再映射到 L2 任务。</p>
 
       <h3>3.1 核心对象</h3>
-      <table>
-        <thead><tr><th>对象</th><th>职责</th><th>检视要点</th></tr></thead>
-        <tbody>
-          <tr><td>Part / Setup</td><td>零件、夹具、批次、温度名义值</td><td>是否与设备序列号解耦</td></tr>
-          <tr><td>Feature</td><td>点 / 线 / 面 / 圆 / 柱 / 锥 / 球 / 曲线 / 曲面</td><td>名义、公差、采样策略分离存储</td></tr>
-          <tr><td>DRF / Alignment</td><td>3-2-1、RPS、最佳拟合</td><td>约束、权重、失败回退显式化</td></tr>
-          <tr><td>Program</td><td>顺序、循环、分支、托盘</td><td>可离线仿真，不依赖联机</td></tr>
-          <tr><td>Evaluator</td><td>拟合与 GD&amp;T</td><td>算法版本可追溯，异常点策略可配置</td></tr>
-          <tr><td>Report / Trace</td><td>结果、测点、补偿版本、操作者</td><td>能复现当次测量，而不是只留最终数</td></tr>
-        </tbody>
-      </table>
+      <div class="spec">
+        <article><h4>Part / Setup</h4><p><b>职责</b> 零件、夹具、批次、温度名义值</p><p><b>检视</b> 是否与设备序列号解耦</p></article>
+        <article><h4>Feature</h4><p><b>职责</b> 点 / 线 / 面 / 圆 / 柱 / 锥 / 球 / 曲线 / 曲面</p><p><b>检视</b> 名义、公差、采样策略分离存储</p></article>
+        <article><h4>DRF / Alignment</h4><p><b>职责</b> 3-2-1、RPS、最佳拟合</p><p><b>检视</b> 约束、权重、失败回退显式化</p></article>
+        <article><h4>Program</h4><p><b>职责</b> 顺序、循环、分支、托盘</p><p><b>检视</b> 可离线仿真，不依赖联机</p></article>
+        <article><h4>Evaluator</h4><p><b>职责</b> 拟合与 GD&amp;T</p><p><b>检视</b> 算法版本可追溯，异常点策略可配置</p></article>
+        <article><h4>Report / Trace</h4><p><b>职责</b> 结果、测点、补偿版本、操作者</p><p><b>检视</b> 能复现当次测量，而不是只留最终数</p></article>
+      </div>
 
       <h3>3.2 坐标系纪律</h3>
       <p>上位机里至少同时存在四套系，L1 必须显式命名，禁止“当前坐标系”这种隐式全局：</p>
@@ -485,17 +481,14 @@
       <p class="muted">L1 在生成程序或切策略前必须读能力。没有扫描头就不要下发扫描任务；没有转台就不要假设 C 轴。</p>
 
       <h3>4.2 内部子域（仍属 L2）</h3>
-      <table>
-        <thead><tr><th>子域</th><th>做什么</th><th>不要泄漏给 L1</th></tr></thead>
-        <tbody>
-          <tr><td>运动学</td><td>关节↔笛卡尔、测座、转台</td><td>DH 参数、零位脉冲</td></tr>
-          <tr><td>路径与碰撞</td><td>安全平面、回退、盒体/网格碰撞</td><td>插补周期、前瞻缓存</td></tr>
-          <tr><td>测头服务</td><td>校准、等效直径、弯曲、星形针</td><td>触发板阈值寄存器</td></tr>
-          <tr><td>补偿服务</td><td>21 项、体积图、温度、力变形</td><td>图文件二进制布局</td></tr>
-          <tr><td>设备适配</td><td>I++ / 私有以太网 / 现场总线</td><td>报文、重试字节</td></tr>
-          <tr><td>安全监护</td><td>急停、看门狗、工作空间、互锁</td><td>I/O 点表</td></tr>
-        </tbody>
-      </table>
+      <div class="spec">
+        <article><h4>运动学</h4><p><b>做什么</b> 关节↔笛卡尔、测座、转台</p><p><b>不泄漏给 L1</b> DH 参数、零位脉冲</p></article>
+        <article><h4>路径与碰撞</h4><p><b>做什么</b> 安全平面、回退、盒体 / 网格碰撞</p><p><b>不泄漏给 L1</b> 插补周期、前瞻缓存</p></article>
+        <article><h4>测头服务</h4><p><b>做什么</b> 校准、等效直径、弯曲、星形针</p><p><b>不泄漏给 L1</b> 触发板阈值寄存器</p></article>
+        <article><h4>补偿服务</h4><p><b>做什么</b> 21 项、体积图、温度、力变形</p><p><b>不泄漏给 L1</b> 图文件二进制布局</p></article>
+        <article><h4>设备适配</h4><p><b>做什么</b> I++ / 私有以太网 / 现场总线</p><p><b>不泄漏给 L1</b> 报文、重试字节</p></article>
+        <article><h4>安全监护</h4><p><b>做什么</b> 急停、看门狗、工作空间、互锁</p><p><b>不泄漏给 L1</b> I/O 点表</p></article>
+      </div>
 
       <h3>4.3 采集质量必须上行</h3>
       <p>每个点至少带：坐标、所在坐标系、测针 ID、测座角、补偿图版本、触发/扫描标志、预行程或偏转、时间戳、质量位。缺质量位的点，L1 不得当合格数据做精密评定。</p>
@@ -558,8 +551,11 @@
       <h2 class="sec">7. 分层检视要点</h2>
       <p class="muted">现场/设计评审时逐条勾选。进度存在本机浏览器，不清缓存可接着用。</p>
       <div class="progress">
-        <div class="bar"><span id="bar"></span></div>
-        <div class="prog-text" id="progText">已完成 0 / 0</div>
+        <div class="meter">
+          <div class="bar"><span id="bar"></span></div>
+          <div class="prog-text" id="progText">已完成 0 / 0</div>
+        </div>
+        <button class="reset" type="button" id="resetBtn">清空</button>
       </div>
 
       <h3>A. 边界与依赖</h3>
@@ -693,6 +689,10 @@
       localStorage.setItem(KEY, JSON.stringify(map));
     }
     boxes.forEach(b => b.addEventListener("change", render));
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      boxes.forEach(b => b.checked = false);
+      render();
+    });
     render();
   </script>
 </body>
